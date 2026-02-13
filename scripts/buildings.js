@@ -15,7 +15,7 @@ const routes = (fastify, options, done) => {
   //route to fetchSpecificBuildingByName(name)
   fastify.get("/building/name/:name", (request, reply) => {
     const {name} = request.params;
-    dbFunctions.fetchSpecififcBuildingByName(name, (err,row) => {
+    dbFunctions.fetchSpecificBuildingByName(name, (err,row) => {
       if(err){
         reply.status(500).send({error: "Failed to fetch building row by name."});
       }
