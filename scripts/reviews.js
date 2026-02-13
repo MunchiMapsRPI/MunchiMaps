@@ -13,9 +13,9 @@ const routes = (fastify, options, done) => {
     });
     
     fastify.post("/review", async (request, reply) => {
-      const {building_id, product_rating, functionality_rating, needs_service} = request.params;
+      const {comment, building_id, product_rating} = request.body;
       try {
-        await dbFunctions.insertReview(building_id, product_rating, functionality_rating, needs_service);
+        await dbFunctions.insertReview(comment, building_id, product_rating);
         reply.send({success: true});
       }
       catch (err) {

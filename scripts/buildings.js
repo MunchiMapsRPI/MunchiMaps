@@ -38,12 +38,12 @@ const routes = (fastify, options, done) => {
     });
   });
   
-  //route to get building name by ID
-  fastify.get("/building/name", (request, reply) => {
+  //route to get building ID by name
+  fastify.get("/building/name/:name/id", (request, reply) => {
     const {name} = request.params;
     dbFunctions.getBuildingIDByName(name, (err, row) => {
       if(err){
-        reply.status(500).send({error: "Failed to fetch building name by id."});
+        reply.status(500).send({error: "Failed to fetch building id by name."});
       }
       else {
         reply.send(row);
@@ -105,7 +105,7 @@ const routes = (fastify, options, done) => {
   
   //route for inserting a new building in table 
   fastify.post("/building", async (request, reply) => {
-    const {name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service} = request.params;
+    const {name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service} = request.body;
     try{
       await dbFunctions.insertBuilding(name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service);
       reply.send({success: true});
