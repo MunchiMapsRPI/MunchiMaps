@@ -1,5 +1,17 @@
 const dbFunctions = require("./database.js");
 
+const insertReviewSchema = {
+  body: {
+    type: 'object',
+    required: ['building_id', 'product_rating'],
+    properties: {
+      comment: { type: 'string', maxLength: 1000 },
+      building_id: { type: 'integer', minimum: 1 },
+      product_rating: { type: 'integer', minimum: 1, maximum: 5 }
+    }
+  }
+};
+
 const routes = (fastify, options, done) => {
   
   //route to fetchAllReviews
@@ -12,11 +24,17 @@ const routes = (fastify, options, done) => {
     }
   });
   
-  fastify.post("/review", async (request, reply) => {
+  fastify.post("/review", { schema: insertReviewSchema }, async (request, reply) => {
     try {
       const {comment, building_id, product_rating} = request.body;
+      
+      const building = dbFunctions.fetchSpecificBuildingByKey(building_id);
+      if (!building) {
+        return reply.status(404).send({error: `Building with id '${building_id}' not found.`});
+      }
+      
       await dbFunctions.insertReview(comment, building_id, product_rating);
-      reply.send({success: true});
+      reply.status(201).send({success: true});
     } catch (err) {
       reply.status(500).send({error: "Failed to insert new review object."});
     }

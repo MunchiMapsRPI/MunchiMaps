@@ -1,5 +1,24 @@
 const dbFunctions = require("./database.js");
 
+const insertBuildingSchema = {
+  body: {
+    type: 'object',
+    required: ['name', 'x_coord', 'y_coord', 'time_opens', 'time_closes'],
+    properties: {
+      name: { type: 'string', minLength: 1 },
+      x_coord: { type: 'number' },
+      y_coord: { type: 'number' },
+      time_opens: { type: 'string' },
+      time_closes: { type: 'string' },
+      num_snack_machines: { type: 'integer', minimum: 0 },
+      num_drink_machines: { type: 'integer', minimum: 0 },
+      num_ratings: { type: 'integer', minimum: 0 },
+      average_ratings: { type: 'number', minimum: 0, maximum: 5 },
+      needs_service: { type: 'boolean' }
+    }
+  }
+};
+
 const routes = (fastify, options, done) => {
   
   //route to fetchAllBuildingNames
@@ -17,6 +36,9 @@ const routes = (fastify, options, done) => {
     try {
       const {name} = request.params;
       const row = dbFunctions.fetchSpecificBuildingByName(name);
+      if (!row) {
+        return reply.status(404).send({error: `Building '${name}' not found.`});
+      }
       reply.send(row);
     } catch (err) {
       reply.status(500).send({error: "Failed to fetch building row by name."});
@@ -28,6 +50,9 @@ const routes = (fastify, options, done) => {
     try {
       const {id} = request.params;
       const row = dbFunctions.fetchSpecificBuildingByKey(id);
+      if (!row) {
+        return reply.status(404).send({error: `Building with id '${id}' not found.`});
+      }
       reply.send(row);
     } catch (err) {
       reply.status(500).send({error: "Failed to fetch building row by id."});
@@ -39,6 +64,9 @@ const routes = (fastify, options, done) => {
     try {
       const {name} = request.params;
       const row = dbFunctions.getBuildingIDByName(name);
+      if (!row) {
+        return reply.status(404).send({error: `Building '${name}' not found.`});
+      }
       reply.send(row);
     } catch (err) {
       reply.status(500).send({error: "Failed to fetch building id by name."});
@@ -50,6 +78,9 @@ const routes = (fastify, options, done) => {
     try {
       const {name} = request.params;
       const row = dbFunctions.getX(name);
+      if (!row) {
+        return reply.status(404).send({error: `Building '${name}' not found.`});
+      }
       reply.send(row);
     } catch (err) {
       reply.status(500).send({error: "Failed to get x_coord."});
@@ -61,6 +92,9 @@ const routes = (fastify, options, done) => {
     try {
       const {name} = request.params;
       const row = dbFunctions.getY(name);
+      if (!row) {
+        return reply.status(404).send({error: `Building '${name}' not found.`});
+      }
       reply.send(row);
     } catch (err) {
       reply.status(500).send({error: "Failed to get y_coord."});
@@ -72,6 +106,9 @@ const routes = (fastify, options, done) => {
     try {
       const {name} = request.params;
       const row = dbFunctions.getNumDrinkMachines(name);
+      if (!row) {
+        return reply.status(404).send({error: `Building '${name}' not found.`});
+      }
       reply.send(row);
     } catch (err) {
       reply.status(500).send({error: "Failed to get num_drink_machines."});
@@ -83,6 +120,9 @@ const routes = (fastify, options, done) => {
     try {
       const {name} = request.params;
       const row = dbFunctions.getNumSnackMachines(name);
+      if (!row) {
+        return reply.status(404).send({error: `Building '${name}' not found.`});
+      }
       reply.send(row);
     } catch (err) {
       reply.status(500).send({error: "Failed to get num_snack_machines."});
@@ -90,11 +130,11 @@ const routes = (fastify, options, done) => {
   });
   
   //route for inserting a new building in table 
-  fastify.post("/building", async (request, reply) => {
+  fastify.post("/building", { schema: insertBuildingSchema }, async (request, reply) => {
     try {
       const {name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service} = request.body;
       await dbFunctions.insertBuilding(name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service);
-      reply.send({success: true});
+      reply.status(201).send({success: true});
     } catch (err) {
       reply.status(500).send({error: "Failed to insert new building object."});
     }
