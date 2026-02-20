@@ -54,6 +54,15 @@ function buildBuildingTable() {
   }
 }
 
+function createIndexes() {
+  try {
+    db.run(`CREATE INDEX IF NOT EXISTS idx_building_name ON building(name)`);
+    console.log("Database indexes created successfully :D");
+  } catch (err) {
+    console.error("Error creating indexes >:(", err.message);
+  }
+}
+
 function buildReviewTable() {
   try {
     db.run(`CREATE TABLE IF NOT EXISTS review (
@@ -140,6 +149,7 @@ async function initializeDatabase() {
     console.log("Report table already exists :P");
   }
 
+  createIndexes();
   saveDb();
 }
 
