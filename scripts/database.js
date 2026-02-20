@@ -169,101 +169,36 @@ const populateWithStarterData = async () => {
   }
 };
 
-function fetchSpecificBuildingByName(name, callback) {
-  setImmediate(() => {
-    try {
-      const row = execGet(db, "SELECT * FROM building WHERE name = ?", [name]);
-      callback(null, row);
-    } catch (err) {
-      console.error(err.message);
-      callback(err, null);
-    }
-  });
+function fetchSpecificBuildingByName(name) {
+  return execGet(db, "SELECT * FROM building WHERE name = ?", [name]);
 }
 
-function fetchSpecificBuildingByKey(key, callback) {
-  setImmediate(() => {
-    try {
-      const row = execGet(db, "SELECT * FROM building WHERE id = ?", [key]);
-      callback(null, row);
-    } catch (err) {
-      console.error(err.message);
-      callback(err, null);
-    }
-  });
+function fetchSpecificBuildingByKey(key) {
+  return execGet(db, "SELECT * FROM building WHERE id = ?", [key]);
 }
 
-function getBuildingIDByName(name, callback) {
-  setImmediate(() => {
-    try {
-      const row = execGet(db, "SELECT id FROM building WHERE name = ?", [name]);
-      callback(null, row);
-    } catch (err) {
-      console.error(err.message);
-      callback(err, null);
-    }
-  });
+function getBuildingIDByName(name) {
+  return execGet(db, "SELECT id FROM building WHERE name = ?", [name]);
 }
 
-function getX(name, callback) {
-  setImmediate(() => {
-    try {
-      const row = execGet(db, "SELECT x_coord FROM building WHERE name = ?", [name]);
-      callback(null, row);
-    } catch (err) {
-      console.error(err.message);
-      callback(err, null);
-    }
-  });
+function getX(name) {
+  return execGet(db, "SELECT x_coord FROM building WHERE name = ?", [name]);
 }
 
-function getY(name, callback) {
-  setImmediate(() => {
-    try {
-      const row = execGet(db, "SELECT y_coord FROM building WHERE name = ?", [name]);
-      callback(null, row);
-    } catch (err) {
-      console.error(err.message);
-      callback(err, null);
-    }
-  });
+function getY(name) {
+  return execGet(db, "SELECT y_coord FROM building WHERE name = ?", [name]);
 }
 
-const fetchAllBuildingNames = () => {
-  return new Promise((resolve, reject) => {
-    setImmediate(() => {
-      try {
-        const rows = execAll(db, "SELECT name FROM building");
-        resolve(rows);
-      } catch (err) {
-        reject(err);
-      }
-    });
-  });
-};
-
-function getNumSnackMachines(name, callback) {
-  setImmediate(() => {
-    try {
-      const row = execGet(db, "SELECT num_snack_machines FROM building WHERE name = ?", [name]);
-      callback(null, row);
-    } catch (err) {
-      console.error(err.message);
-      callback(err, null);
-    }
-  });
+function fetchAllBuildingNames() {
+  return execAll(db, "SELECT name FROM building");
 }
 
-function getNumDrinkMachines(name, callback) {
-  setImmediate(() => {
-    try {
-      const row = execGet(db, "SELECT num_drink_machines FROM building WHERE name = ?", [name]);
-      callback(null, row);
-    } catch (err) {
-      console.error(err.message);
-      callback(err, null);
-    }
-  });
+function getNumSnackMachines(name) {
+  return execGet(db, "SELECT num_snack_machines FROM building WHERE name = ?", [name]);
+}
+
+function getNumDrinkMachines(name) {
+  return execGet(db, "SELECT num_drink_machines FROM building WHERE name = ?", [name]);
 }
 
 module.exports = {
