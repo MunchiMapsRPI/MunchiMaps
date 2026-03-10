@@ -57,6 +57,8 @@ function buildBuildingTable() {
 function createIndexes() {
   try {
     db.run(`CREATE INDEX IF NOT EXISTS idx_building_name ON building(name)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_review_building_id ON review(building_id)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_report_building_id ON report(building_id)`);
     console.log("Database indexes created successfully :D");
   } catch (err) {
     console.error("Error creating indexes >:(", err.message);
@@ -280,6 +282,7 @@ module.exports = {
 
   insertReview: async (comment, building_id, product_rating) => {
     try {
+      db.run("BEGIN TRANSACTION");
       db.run("INSERT INTO review (comment, building_id, product_rating) VALUES (?, ?, ?)", [
         comment,
         building_id,
@@ -292,8 +295,10 @@ module.exports = {
          WHERE id = ?`,
         [building_id]
       );
+      db.run("COMMIT");
       saveDb();
     } catch (dbError) {
+      db.run("ROLLBACK");
       console.error(dbError);
     }
   },
