@@ -1,4 +1,5 @@
 const dbFunctions = require("./database.js");
+const { sanitizeBody } = require("./sanitize.js");
 
 const insertReportSchema = {
   body: {
@@ -17,7 +18,8 @@ const routes = (fastify, options, done) => {
   //route for inserting a report object
   fastify.post("/report", { schema: insertReportSchema }, async (request, reply) => {
     try {
-      const {building_id, title, description} = request.body;
+      const body = sanitizeBody(request.body, ["title", "description"]);
+      const {building_id, title, description} = body;
       
       const building = dbFunctions.fetchSpecificBuildingByKey(building_id);
       if (!building) {

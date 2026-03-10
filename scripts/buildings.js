@@ -1,4 +1,5 @@
 const dbFunctions = require("./database.js");
+const { sanitizeBody } = require("./sanitize.js");
 
 const insertBuildingSchema = {
   body: {
@@ -132,7 +133,8 @@ const routes = (fastify, options, done) => {
   //route for inserting a new building in table 
   fastify.post("/building", { schema: insertBuildingSchema }, async (request, reply) => {
     try {
-      const {name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service} = request.body;
+      const body = sanitizeBody(request.body, ["name", "time_opens", "time_closes"]);
+      const {name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service} = body;
       await dbFunctions.insertBuilding(name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service);
       reply.status(201).send({success: true});
     } catch (err) {

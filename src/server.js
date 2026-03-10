@@ -1,7 +1,8 @@
 console.log("[src] server.js running...");
 
 const fastify = require("fastify")({
-  logger: true
+  logger: true,
+  bodyLimit: 64 * 1024 // 64KB - limits impact of large payloads
 });
 
 const path = require('path');
