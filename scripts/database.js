@@ -160,8 +160,11 @@ const populateWithStarterData = async () => {
 
     const sql =
       "INSERT INTO building (name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+    db.run("BEGIN TRANSACTION");
+    const stmt = db.prepare(sql);
     for (const item of jsonData) {
-      db.run(sql, [
+      stmt.bind([
         item.name,
         item.x_coord,
         item.y_coord,
@@ -173,8 +176,13 @@ const populateWithStarterData = async () => {
         item.average_ratings,
         item.needs_service,
       ]);
+      stmt.step();
+      stmt.reset();
     }
+    stmt.free();
+    db.run("COMMIT");
   } catch (err) {
+    db.run("ROLLBACK");
     console.error("Error in populateWithStarterData", err.message);
   }
 };
