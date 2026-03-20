@@ -651,8 +651,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 // Handle report form submission
 document.addEventListener('DOMContentLoaded', function () {
-    initMap();
-
     const reportForm = document.getElementById('reportForm');
     reportForm.addEventListener('submit', function(event) {
         event.preventDefault();
