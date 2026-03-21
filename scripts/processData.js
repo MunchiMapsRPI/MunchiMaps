@@ -14,118 +14,73 @@ let typeMap = new Map();
 
 const fetchAllBuildingNames = async () => {
   try {
-    // Make a GET request to the Fastify route to fetch all building names
-    const response = await axios.get('http://localhost:5000/building/names');
-    const buildings = response.data;
+    buildingNames = [];
+    const pageSize = 200;
+    let offset = 0;
+    let total = Infinity;
 
-    // Log the response data to check its structure
-    console.log('Response Data:', buildings);
+    while (offset < total) {
+      const response = await axios.get("http://localhost:5000/building/names", {
+        params: { limit: pageSize, offset },
+      });
+      const { items, total: t } = response.data;
+      total = typeof t === "number" ? t : 0;
 
-    // Extract building names and store them in the global variable
-    if (Array.isArray(buildings)) {
-      buildingNames = buildings.map(building => building.name);
-      console.log('Building Names:', buildingNames);
-    } else {
-      console.error('Expected an array but received:', typeof buildings);
-      buildingNames = [];
+      if (!Array.isArray(items)) {
+        console.error("Expected items array in paginated response:", response.data);
+        buildingNames = [];
+        return;
+      }
+
+      items.forEach((row) => {
+        if (row && row.name) buildingNames.push(row.name);
+      });
+
+      offset += items.length;
+      if (items.length === 0) break;
     }
+
+    console.log("Building Names:", buildingNames);
   } catch (error) {
-    console.error('Error fetching building names:', error);
+    console.error("Error fetching building names:", error);
     buildingNames = [];
   }
 };
 
-// Function for fetching x_coord given name
-const fetchX = async (name) => {
+/** Full building row by name (one round trip: coords + machine counts + id). */
+const fetchBuildingByName = async (name) => {
   try {
-    const response = await axios.get(`http://localhost:5000/building/x_coord/${name}`);
-    const x_coord = response.data.x_coord;
-    
-    console.log(`X-Coord for ${name}:`, x_coord);
-    return x_coord;
+    const encoded = encodeURIComponent(name);
+    const response = await axios.get(`http://localhost:5000/building/name/${encoded}`);
+    return response.data;
   } catch (error) {
-    console.error(`Error fetching X-Coord for ${name}:`, error);
+    console.error(`Error fetching building "${name}":`, error);
     return null;
   }
 };
-
-// Function for fetching y_coord given name
-const fetchY = async (name) => {
-  try {
-    const response = await axios.get(`http://localhost:5000/building/y_coord/${name}`);
-    const y_coord = response.data.y_coord;
-    
-    console.log(`Y-Coord for ${name}:`, y_coord);
-    return y_coord;
-  } catch (error) {
-    console.error(`Error fetching Y-Coord for ${name}:`, error);
-    return null;
-  }
-};
-
-// Function that returns T/F if a building has drink machines
-const hasDrinkMachines = async (name) => {
-  try {
-    const response = await axios.get(`http://localhost:5000/building/num_drink_machines/${name}`);
-    const num_drink_machines = response.data.num_drink_machines;
-    
-    return num_drink_machines > 0;
-  } catch (error) {
-    console.error(`Error fetching if ${name} has drink machines:`, error);
-    return null;
-  }
-}
-
-// Function that returns T/F if a building has snack machines
-const hasSnackMachines = async (name) => {
-  try {
-    const response = await axios.get(`http://localhost:5000/building/num_snack_machines/${name}`);
-    const num_snack_machines = response.data.num_snack_machines;
-    
-    return num_snack_machines > 0;
-  } catch (error) {
-    console.error(`Error fetching if ${name} has snack machines:`, error);
-    return null;
-  }
-}
 
 // Function to build a map with key building name and values x and y coords
-const buildCoordMap = async () => {
-  if (buildingNames.length > 0) {
-    for (const name of buildingNames) {
-      console.log("Current Building:", name);
-      
-      const x_coord = await fetchX(name);
-      const y_coord = await fetchY(name);
-      
-      if (x_coord !== null && y_coord !== null) {
-        coordsMap.set(name, [x_coord, y_coord]);
-      }
-    }
-    console.log("Coords map:", coordsMap);
-  } else {
+// One GET /building/name/:name per building fills both coord and type maps
+const buildCoordAndTypeMaps = async () => {
+  if (buildingNames.length === 0) {
     console.log("Building names list is empty.");
+    return;
   }
-};
+  for (const name of buildingNames) {
+    console.log("Current Building:", name);
+    const building = await fetchBuildingByName(name);
+    if (!building) continue;
 
-// Function to build a map with key building name and values T/F for drink and snack machines
-const buildTypeMap = async () => {
-  if (buildingNames.length > 0) {
-    for (const name of buildingNames) {
-      console.log("Current Building:", name);
-      
-      const has_drink_machine = await hasDrinkMachines(name);
-      const has_snack_machine = await hasSnackMachines(name);
-      
-      if (has_drink_machine !== null && has_snack_machine !== null) {
-        typeMap.set(name, [has_drink_machine, has_snack_machine]);
-      }
+    if (building.x_coord != null && building.y_coord != null) {
+      coordsMap.set(name, [building.x_coord, building.y_coord]);
     }
-    console.log("Type Map:", typeMap);
-  } else {
-    console.log("Building names list is empty.");
+    const has_drink_machine = Number(building.num_drink_machines) > 0;
+    const has_snack_machine = Number(building.num_snack_machines) > 0;
+    typeMap.set(name, [has_drink_machine, has_snack_machine]);
   }
-}
+  console.log("Coords map:", coordsMap);
+  console.log("Type Map:", typeMap);
+};
 
 // Exports names and coordinates to a CSV file for testPlot to read from
 const exportCoordData = (filePath) => {
@@ -159,8 +114,7 @@ const runDataProcessing = async () => {
   if(!fileExists(coordFile) || !fileExists(typeFile)){
     try {
       await fetchAllBuildingNames();
-      await buildCoordMap();
-      await buildTypeMap();    
+      await buildCoordAndTypeMaps();
     }
     catch (err) {
       console.error("Error reading in data.");

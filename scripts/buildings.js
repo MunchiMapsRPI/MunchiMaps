@@ -22,17 +22,26 @@ const insertBuildingSchema = {
 
 const routes = (fastify, options, done) => {
   
-  //route to fetchAllBuildingNames
+  // Paginated building names: ?limit=&offset= (use GET /building/name/:name for full row — replaces /x_coord, /y_coord, etc.)
   fastify.get("/building/names", async (request, reply) => {
     try {
-      const buildings = dbFunctions.fetchAllBuildingNames();
-      reply.send(buildings);
+      const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 100, 1), 500);
+      const offset = Math.max(parseInt(request.query.offset, 10) || 0, 0);
+      const total = dbFunctions.countBuildings();
+      const items = dbFunctions.fetchBuildingNamesPage(limit, offset);
+      reply.send({
+        items,
+        total,
+        limit,
+        offset,
+        hasMore: offset + items.length < total,
+      });
     } catch (err) {
-      reply.status(500).send({error: "Failed to fetch buildings"});
+      reply.status(500).send({ error: "Failed to fetch buildings" });
     }
   });
-  
-  //route to fetchSpecificBuildingByName(name)
+
+  // Single canonical endpoint: full building by name (includes x_coord, y_coord, machine counts, id, …)
   fastify.get("/building/name/:name", async (request, reply) => {
     try {
       const {name} = request.params;
@@ -59,77 +68,7 @@ const routes = (fastify, options, done) => {
       reply.status(500).send({error: "Failed to fetch building row by id."});
     }
   });
-  
-  //route to get building ID by name
-  fastify.get("/building/name/:name/id", async (request, reply) => {
-    try {
-      const {name} = request.params;
-      const row = dbFunctions.getBuildingIDByName(name);
-      if (!row) {
-        return reply.status(404).send({error: `Building '${name}' not found.`});
-      }
-      reply.send(row);
-    } catch (err) {
-      reply.status(500).send({error: "Failed to fetch building id by name."});
-    }
-  });
-  
-  //route for getting the x_coord
-  fastify.get("/building/x_coord/:name", async (request, reply) => {
-    try {
-      const {name} = request.params;
-      const row = dbFunctions.getX(name);
-      if (!row) {
-        return reply.status(404).send({error: `Building '${name}' not found.`});
-      }
-      reply.send(row);
-    } catch (err) {
-      reply.status(500).send({error: "Failed to get x_coord."});
-    }
-  });
-  
-  //route for getting the y_coord
-  fastify.get("/building/y_coord/:name", async (request, reply) => {
-    try {
-      const {name} = request.params;
-      const row = dbFunctions.getY(name);
-      if (!row) {
-        return reply.status(404).send({error: `Building '${name}' not found.`});
-      }
-      reply.send(row);
-    } catch (err) {
-      reply.status(500).send({error: "Failed to get y_coord."});
-    }
-  });
-  
-  //route for getting number of drink machines
-  fastify.get("/building/num_drink_machines/:name", async (request, reply) => {
-    try {
-      const {name} = request.params;
-      const row = dbFunctions.getNumDrinkMachines(name);
-      if (!row) {
-        return reply.status(404).send({error: `Building '${name}' not found.`});
-      }
-      reply.send(row);
-    } catch (err) {
-      reply.status(500).send({error: "Failed to get num_drink_machines."});
-    }
-  });
-  
-  //route for getting number of snack machines
-  fastify.get("/building/num_snack_machines/:name", async (request, reply) => {
-    try {
-      const {name} = request.params;
-      const row = dbFunctions.getNumSnackMachines(name);
-      if (!row) {
-        return reply.status(404).send({error: `Building '${name}' not found.`});
-      }
-      reply.send(row);
-    } catch (err) {
-      reply.status(500).send({error: "Failed to get num_snack_machines."});
-    }
-  });
-  
+
   //route for inserting a new building in table 
   fastify.post("/building", { schema: insertBuildingSchema }, async (request, reply) => {
     try {

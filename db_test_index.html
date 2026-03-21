@@ -77,12 +77,13 @@
         }
 
         async function fetchReviews() {
-            const response = await fetch('/review');
-            const reviews = await response.json();
+            const response = await fetch('/review?limit=100&offset=0');
+            const body = await response.json();
+            const reviews = body.items || [];
             const reviewsList = document.getElementById('reviewsList');
             reviewsList.innerHTML = '';
             reviews.forEach(review => {
-                reviewsList.innerHTML += `<p>ID: ${review.id}, Building ID: ${review.building_id}, Product Rating: ${review.product_rating}, Functionality Rating: ${review.functionality_rating}</p>`;
+                reviewsList.innerHTML += `<p>ID: ${review.id}, Building ID: ${review.building_id}, Product Rating: ${review.product_rating}, Comment: ${review.comment ?? ''}</p>`;
             });
         }
 

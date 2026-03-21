@@ -54,6 +54,17 @@ function buildBuildingTable() {
   }
 }
 
+/** WAL reduces write contention; with sql.js the DB is in-memory and exported to disk—native file SQLite benefits most. */
+function enableWalMode() {
+  try {
+    const row = execGet(db, "PRAGMA journal_mode=WAL");
+    const mode = row && (row.journal_mode ?? Object.values(row)[0]);
+    console.log("SQLite journal_mode:", mode);
+  } catch (err) {
+    console.warn("Could not set journal_mode to WAL:", err.message);
+  }
+}
+
 function createIndexes() {
   try {
     db.run(`CREATE INDEX IF NOT EXISTS idx_building_name ON building(name)`);
@@ -123,6 +134,8 @@ async function initializeDatabase() {
   }
   db = filebuffer ? new SQL.Database(filebuffer) : new SQL.Database();
   console.log("Connected to the SQLite database.");
+
+  enableWalMode();
 
   const hasBuilding = execGet(db, "SELECT name FROM sqlite_master WHERE type='table' AND name=?", ["building"]);
   if (!hasBuilding) {
@@ -197,28 +210,22 @@ function fetchSpecificBuildingByKey(key) {
   return execGet(db, "SELECT * FROM building WHERE id = ?", [key]);
 }
 
-function getBuildingIDByName(name) {
-  return execGet(db, "SELECT id FROM building WHERE name = ?", [name]);
+function countBuildings() {
+  const row = execGet(db, "SELECT COUNT(*) AS c FROM building");
+  return row ? Number(row.c) : 0;
 }
 
-function getX(name) {
-  return execGet(db, "SELECT x_coord FROM building WHERE name = ?", [name]);
+function fetchBuildingNamesPage(limit, offset) {
+  return execAll(db, "SELECT name FROM building ORDER BY name ASC LIMIT ? OFFSET ?", [limit, offset]);
 }
 
-function getY(name) {
-  return execGet(db, "SELECT y_coord FROM building WHERE name = ?", [name]);
+function countReviews() {
+  const row = execGet(db, "SELECT COUNT(*) AS c FROM review");
+  return row ? Number(row.c) : 0;
 }
 
-function fetchAllBuildingNames() {
-  return execAll(db, "SELECT name FROM building");
-}
-
-function getNumSnackMachines(name) {
-  return execGet(db, "SELECT num_snack_machines FROM building WHERE name = ?", [name]);
-}
-
-function getNumDrinkMachines(name) {
-  return execGet(db, "SELECT num_drink_machines FROM building WHERE name = ?", [name]);
+function fetchReviewsPage(limit, offset) {
+  return execAll(db, "SELECT * FROM review ORDER BY id ASC LIMIT ? OFFSET ?", [limit, offset]);
 }
 
 module.exports = {
@@ -226,12 +233,10 @@ module.exports = {
   populateWithStarterData,
   fetchSpecificBuildingByName,
   fetchSpecificBuildingByKey,
-  getBuildingIDByName,
-  fetchAllBuildingNames,
-  getX,
-  getY,
-  getNumSnackMachines,
-  getNumDrinkMachines,
+  countBuildings,
+  fetchBuildingNamesPage,
+  countReviews,
+  fetchReviewsPage,
 
   addReport: async (building_id, title, description) => {
     try {
@@ -312,12 +317,4 @@ module.exports = {
     }
   },
 
-  fetchAllReviews: async () => {
-    try {
-      return execAll(db, "SELECT * FROM review");
-    } catch (dbError) {
-      console.error(dbError);
-      return [];
-    }
-  },
 };
