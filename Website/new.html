@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="icon" type="image/x-icon" href="https://github.com/mike-cautela/MunchiMaps/blob/main/MunchiMaps%20Assets/CookieFavicon.png?raw=true">
+  <link rel="icon" type="image/png" href="MunchiMaps Assets/CookieFavicon.png">
  
   <title>MunchiMaps</title>
   
-  <link  rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous" />
   <link id ='light-mode'rel="stylesheet" href="styles/MunchiMaps_stylesheet.css" />
   <link id ='dark-mode' rel="stylesheet" href="styles/dark.css" />
   <link rel="stylesheet" href="styles/Location_Style_Sheet.css" />
   <link rel="stylesheet" href="styles/loading_animation_stylesheet.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
   <script src="js/script.js" ></script>
 
   
 </head>
 <body>
   <div class="logo-title">
-    <img src="https://github.com/mike-cautela/MunchiMaps/blob/main/Website/MunchiMaps%20Assets/MunchiMaps%20Logos/MunchiMapsCroppedLogo.png?raw=true" alt="MunchiMaps">
+    <img src="MunchiMaps Assets/MunchiMaps Logos/MunchiMapsCroppedLogo.png" alt="MunchiMaps" loading="eager" decoding="async">
   </div>
    
   <div id="map-container">
@@ -26,12 +26,12 @@
 
   <!-- Add the help button -->
 <icon class="help-button" onclick="openHelp()">
-  <img src="https://raw.githubusercontent.com/mike-cautela/MunchiMaps/main/Website/MunchiMaps%20Assets/MenuIcons/help-circle-grey.svg" alt="Help" class="help-button-img">
+  <img src="MunchiMaps Assets/MenuIcons/help-circle-grey.svg" alt="Help" class="help-button-img" loading="lazy" decoding="async">
 </icon>
 
 <!-- Map Key Button -->
 <button class="map-key-button" onclick="openMapKey()">
-  <img src="https://github.com/mike-cautela/MunchiMaps/blob/main/Website/MunchiMaps%20Assets/CookieFavicon.png?raw=true" alt="Map Key" class="map-key-button-img">
+  <img src="MunchiMaps Assets/CookieFavicon.png" alt="Map Key" class="map-key-button-img" loading="lazy" decoding="async">
 </button>
 
   <div id="help-popup" class="help-popup">
@@ -165,7 +165,7 @@
           </tr>
           <tr class="icon-item">
               <td>
-                  <img src="MunchiMaps Assets/Map Icons/Food&Drink.png" alt="Snacks and Drinks" class="map-icon">
+                  <img src="MunchiMaps Assets/Map Icons/Food%26Drink.png" alt="Snacks and Drinks" class="map-icon">
               </td>
               <td>
                   <span>Both Food and Drink available.</span>
@@ -175,7 +175,7 @@
               <td>
                   <img src="MunchiMaps Assets/Map Icons/FoodClosed.png" alt="FoodClosed" class="map-icon">
                   <img src="MunchiMaps Assets/Map Icons/DrinkClosed.png" alt="DrinkClosed" class="map-icon">
-                  <img src="MunchiMaps Assets/Map Icons/Food&DrinkClosed.png" alt="BothClosed" class="map-icon">
+                  <img src="MunchiMaps Assets/Map Icons/Food%26DrinkClosed.png" alt="BothClosed" class="map-icon">
               </td>
               <td>
                   <span>Machine out of service.</span>
@@ -185,7 +185,7 @@
               <td>
                   <img src="MunchiMaps Assets/Map Icons/DrinkWarning.png" alt="DrinkWarning" class="map-icon">
                   <img src="MunchiMaps Assets/Map Icons/FoodWarning.png" alt="FoodWarning" class="map-icon">
-                  <img src="MunchiMaps Assets/Map Icons/Food&DrinkWarning.png" alt="BothWarning" class="map-icon">
+                  <img src="MunchiMaps Assets/Map Icons/Food%26DrinkWarning.png" alt="BothWarning" class="map-icon">
               </td>
               <td>
                   <span>Machine has a known issue.</span>
@@ -365,15 +365,15 @@
     <!---- Contains all buttons at bottom of screen -->
     <!---- NOTE: Button icons don't really work with dark mode colors, change later -->
       <button class="button" onclick="openSearch()">
-        <img src="https://raw.githubusercontent.com/mike-cautela/MunchiMaps/main/Website/MunchiMaps%20Assets/MenuIcons/search-grey.svg" alt="Search" class="button-img">
+        <img src="MunchiMaps Assets/MenuIcons/search-grey.svg" alt="Search" class="button-img" loading="lazy" decoding="async">
       </button>
       
       <button class="button" onclick="openPopup('Report')">
-         <img src="https://raw.githubusercontent.com/mike-cautela/MunchiMaps/main/Website/MunchiMaps%20Assets/MenuIcons/alert-triangle-grey.svg" alt="Report" class="button-img">
+         <img src="MunchiMaps Assets/MenuIcons/alert-triangle-grey.svg" alt="Report" class="button-img" loading="lazy" decoding="async">
       </button>
 
       <button class="button" id="Location">
-         <img src="https://raw.githubusercontent.com/mike-cautela/MunchiMaps/main/Website/MunchiMaps%20Assets/MenuIcons/crosshair-grey.svg" alt="Location" class="button-img">
+         <img src="MunchiMaps Assets/MenuIcons/crosshair-grey.svg" alt="Location" class="button-img" loading="lazy" decoding="async">
       </button>
     </div>
 </body>

@@ -1,26 +1,26 @@
-// We want to cleanly handle the URL paths used for icons
-const ASSETS_BASE_URL = "https://github.com/mike-cautela/MunchiMaps/blob/main/Website/MunchiMaps%20Assets";
-const ICONS_PATH = `${ASSETS_BASE_URL}/Map%20Icons`;
+// Served from static root (same origin as new.html) — no GitHub redirects
+const ASSETS_BASE_REL = "MunchiMaps Assets";
+const ICONS_PATH = `${ASSETS_BASE_REL}/Map Icons`;
 
 const PAYMENT_ICONS = {
     CREDIT: {
-        CHECK: `${ICONS_PATH}/CreditCheck.png?raw=true`,
-        X: `${ICONS_PATH}/CreditX.png?raw=true`
+        CHECK: `${ICONS_PATH}/CreditCheck.png`,
+        X: `${ICONS_PATH}/CreditX.png`
     },
     CASH: {
-        CHECK: `${ICONS_PATH}/CashCheck.png?raw=true`,
-        X: `${ICONS_PATH}/CashX.png?raw=true`
+        CHECK: `${ICONS_PATH}/CashCheck.png`,
+        X: `${ICONS_PATH}/CashX.png`
     },
     PHONE: {
-        CHECK: `${ICONS_PATH}/PhoneCheck.png?raw=true`,
-        X: `${ICONS_PATH}/PhoneX.png?raw=true`
+        CHECK: `${ICONS_PATH}/PhoneCheck.png`,
+        X: `${ICONS_PATH}/PhoneX.png`
     }
 };
 
 const MAP_ICONS = {
-    FOOD_AND_DRINK: `${ICONS_PATH}/Food&Drink.png?raw=true`,
-    FOOD: `${ICONS_PATH}/Food.png?raw=true`,
-    DRINK: `${ICONS_PATH}/Drink.png?raw=true`
+    FOOD_AND_DRINK: `${ICONS_PATH}/Food%26Drink.png`,
+    FOOD: `${ICONS_PATH}/Food.png`,
+    DRINK: `${ICONS_PATH}/Drink.png`
 };
 
 class EventEmitter {
@@ -66,32 +66,37 @@ function vendingOffered(numSnack, numDrinks) { // These are the blue and gray ma
 }
 
 function setImages(name, numSnack, numDrinks) {
-  // new.html lives in /Website, and static root is /Website → '/'
-  const base = `MunchiMaps Assets/${name}/`;
+  const base = `${ASSETS_BASE_REL}/${name}/`;
   const slug = name.replace(/\s+/g, ''); // "Mueller Center" -> "MuellerCenter"
 
   const imgs = [];
   let madeActive = false;
 
+  const imgTag = (src, alt, extraClass, lazy) => {
+    const lazyAttr = lazy ? ' loading="lazy" decoding="async"' : '';
+    const cls = extraClass ? ` class="${extraClass}"` : '';
+    return `<img src="${src}" alt="${alt}"${cls}${lazyAttr}>`;
+  };
+
   // Snack images
   if (numSnack >= 1) {
-    imgs.push(`<img src="${base}${slug}Snack1.jpg" alt="Snack 1" class="active">`);
+    imgs.push(imgTag(`${base}${slug}Snack1.jpg`, 'Snack 1', 'active', false));
     madeActive = true;
     for (let i = 2; i <= numSnack; i++) {
-      imgs.push(`<img src="${base}${slug}Snack${i}.jpg" alt="Snack ${i}">`);
+      imgs.push(imgTag(`${base}${slug}Snack${i}.jpg`, `Snack ${i}`, '', true));
     }
   }
 
   // Drink images
   if (numDrinks >= 1) {
     if (!madeActive) {
-      imgs.push(`<img src="${base}${slug}Drink1.jpg" alt="Drink 1" class="active">`);
+      imgs.push(imgTag(`${base}${slug}Drink1.jpg`, 'Drink 1', 'active', false));
       madeActive = true;
     } else {
-      imgs.push(`<img src="${base}${slug}Drink1.jpg" alt="Drink 1">`);
+      imgs.push(imgTag(`${base}${slug}Drink1.jpg`, 'Drink 1', '', true));
     }
     for (let i = 2; i <= numDrinks; i++) {
-      imgs.push(`<img src="${base}${slug}Drink${i}.jpg" alt="Drink ${i}">`);
+      imgs.push(imgTag(`${base}${slug}Drink${i}.jpg`, `Drink ${i}`, '', true));
     }
   }
 
@@ -112,9 +117,8 @@ class icon extends EventEmitter {
     this.num_ratings = num_ratings;
     this.average_ratings = average_ratings;
     this.needs_service = needs_service;
-    // Load reviews from localStorage if available
-    const storedReviews = localStorage.getItem(`reviews_${this.name}`);
-    this.reviews = storedReviews ? JSON.parse(storedReviews) : [];
+    this.reviews = [];
+    this._reviewsLoaded = false;
 
     this.image1 = PAYMENT_ICONS.CREDIT.CHECK;
     this.image2 = PAYMENT_ICONS.CASH.CHECK;
@@ -125,11 +129,23 @@ class icon extends EventEmitter {
     this.images = setImages(this.name, this.num_snack_machines, this.num_drink_machines);
   }
 
+  ensureReviewsLoaded() {
+    if (this._reviewsLoaded) return;
+    try {
+      const storedReviews = localStorage.getItem(`reviews_${this.name}`);
+      this.reviews = storedReviews ? JSON.parse(storedReviews) : [];
+    } catch {
+      this.reviews = [];
+    }
+    this._reviewsLoaded = true;
+  }
+
   getReviewsHTML() { // Display existing reviews
+    this.ensureReviewsLoaded();
     if (this.reviews.length === 0) {
       return "<div>No reviews yet.</div>";
     }
-    const cookieImg = `<img src="${ASSETS_BASE_URL}/CookieFavicon.png?raw=true" alt="cookie" width="20" height="20">`;
+    const cookieImg = `<img src="${ASSETS_BASE_REL}/CookieFavicon.png" alt="cookie" width="20" height="20" loading="lazy" decoding="async">`;
     return this.reviews.map((r, index) => {
       const author = r.author || 'Anonymous';
       return `
@@ -147,6 +163,7 @@ class icon extends EventEmitter {
   }
 
   editReview(index, newText, newRating) { // Edit a review by index
+    this.ensureReviewsLoaded();
     if (index >= 0 && index < this.reviews.length) {
       this.reviews[index].text = newText;
       this.reviews[index].rating = newRating;
@@ -156,6 +173,7 @@ class icon extends EventEmitter {
   }
 
   deleteReview(index) { // Delete a review by index
+    this.ensureReviewsLoaded();
     if (index >= 0 && index < this.reviews.length) {
       this.reviews.splice(index, 1);
       // Save updated reviews to localStorage
@@ -164,6 +182,7 @@ class icon extends EventEmitter {
   }
 
   updateInfoWindowContent() { // Build the popup when clicking on a marker
+    this.ensureReviewsLoaded();
     this.infoWindowContent = `
       <div class="info-window-content">
         <div class="info-window-image">
@@ -187,11 +206,11 @@ class icon extends EventEmitter {
                 <textarea id="review-text" placeholder="Write your review here..." required></textarea>
                 <div class="rating-row">
                   <div class="rating">
-                    <span rating-star="5"><img src="${ASSETS_BASE_URL}/CookieFavicon.png?raw=true" alt="Star 5" width="30" height="30"></span>
-                    <span rating-star="4"><img src="${ASSETS_BASE_URL}/CookieFavicon.png?raw=true" alt="Star 4" width="30" height="30"></span>
-                    <span rating-star="3"><img src="${ASSETS_BASE_URL}/CookieFavicon.png?raw=true" alt="Star 3" width="30" height="30"></span>
-                    <span rating-star="2"><img src="${ASSETS_BASE_URL}/CookieFavicon.png?raw=true" alt="Star 2" width="30" height="30"></span>
-                    <span rating-star="1"><img src="${ASSETS_BASE_URL}/CookieFavicon.png?raw=true" alt="Star 1" width="30" height="30"></span>
+                    <span rating-star="5"><img src="${ASSETS_BASE_REL}/CookieFavicon.png" alt="Star 5" width="30" height="30" loading="lazy" decoding="async"></span>
+                    <span rating-star="4"><img src="${ASSETS_BASE_REL}/CookieFavicon.png" alt="Star 4" width="30" height="30" loading="lazy" decoding="async"></span>
+                    <span rating-star="3"><img src="${ASSETS_BASE_REL}/CookieFavicon.png" alt="Star 3" width="30" height="30" loading="lazy" decoding="async"></span>
+                    <span rating-star="2"><img src="${ASSETS_BASE_REL}/CookieFavicon.png" alt="Star 2" width="30" height="30" loading="lazy" decoding="async"></span>
+                    <span rating-star="1"><img src="${ASSETS_BASE_REL}/CookieFavicon.png" alt="Star 1" width="30" height="30" loading="lazy" decoding="async"></span>
                   </div>
                   <input type="hidden" id="selected-rating" value="0">
                   <button type="submit">SUBMIT</button>
@@ -206,167 +225,168 @@ class icon extends EventEmitter {
       </div>`;
   }
 
+  openInfoWindowOnMap() {
+    this.updateInfoWindowContent();
+    this.infoWindow = L.popup({ maxWidth: 500 })
+      .setLatLng([this.x_coord, this.y_coord])
+      .setContent(this.infoWindowContent)
+      .openOn(map);
+    setTimeout(() => this._attachDelegatedPopupHandlers(), 0);
+  }
+
+  _attachDelegatedPopupHandlers() {
+    const popupEl = this.infoWindow && this.infoWindow.getElement && this.infoWindow.getElement();
+    if (!popupEl || popupEl.dataset.handlersAttached === "true") return;
+    popupEl.dataset.handlersAttached = "true";
+
+    let currentIndex = 0;
+
+    const getImages = () => {
+      const el = this.infoWindow && this.infoWindow.getElement ? this.infoWindow.getElement() : null;
+      return el ? el.querySelectorAll('.info-window-image img') : [];
+    };
+
+    const showImage = (index) => {
+      const images = getImages();
+      images.forEach((img, i) => {
+        img.classList.toggle('active', i === index);
+      });
+    };
+
+    popupEl.addEventListener('click', (ev) => {
+      const target = ev.target;
+      if (!target) return;
+
+      const prevBtn = target.closest('.prev');
+      if (prevBtn) {
+        ev.stopPropagation();
+        const images = getImages();
+        const len = images.length;
+        if (!len) return;
+        currentIndex = currentIndex > 0 ? currentIndex - 1 : len - 1;
+        showImage(currentIndex);
+        return;
+      }
+
+      const nextBtn = target.closest('.next');
+      if (nextBtn) {
+        ev.stopPropagation();
+        const images = getImages();
+        const len = images.length;
+        if (!len) return;
+        currentIndex = currentIndex < len - 1 ? currentIndex + 1 : 0;
+        showImage(currentIndex);
+        return;
+      }
+
+      const ratingStar = target.closest('.rating span[rating-star]');
+      if (ratingStar) {
+        ev.stopPropagation();
+        const selectedRating = parseInt(ratingStar.getAttribute('rating-star'));
+        if (Number.isNaN(selectedRating)) return;
+
+        const el = this.infoWindow && this.infoWindow.getElement ? this.infoWindow.getElement() : null;
+        if (!el) return;
+
+        const ratingStars = el.querySelectorAll('.rating span[rating-star]');
+        ratingStars.forEach(s => {
+          const starRating = parseInt(s.getAttribute('rating-star'));
+          if (starRating <= selectedRating) s.classList.add('selected');
+          else s.classList.remove('selected');
+        });
+
+        const selEl = el.querySelector('#selected-rating');
+        if (selEl) selEl.value = selectedRating;
+
+        const reviewTextEl = el.querySelector('#review-text');
+        if (reviewTextEl && typeof reviewTextEl.setCustomValidity === 'function') {
+          reviewTextEl.setCustomValidity('');
+        }
+        return;
+      }
+
+      const deleteBtn = target.closest('.review-delete-btn');
+      if (deleteBtn) {
+        ev.stopPropagation();
+        const reviewIndex = parseInt(deleteBtn.getAttribute('data-review-index'));
+        this.deleteReview(reviewIndex);
+        currentIndex = 0;
+        this.updateInfoWindowContent();
+        if (this.infoWindow) this.infoWindow.setContent(this.infoWindowContent);
+        return;
+      }
+
+      const editBtn = target.closest('.review-edit-btn');
+      if (editBtn) {
+        ev.stopPropagation();
+        const reviewIndex = parseInt(editBtn.getAttribute('data-review-index'));
+        this.ensureReviewsLoaded();
+        const review = this.reviews[reviewIndex];
+        if (!review) return;
+
+        const newText = prompt('Edit your review:', review.text);
+        if (newText === null) return;
+        if (!newText.trim()) {
+          alert('Review text cannot be empty');
+          return;
+        }
+
+        const newRatingStr = prompt('Edit your rating (1-5):', review.rating.toString());
+        if (newRatingStr === null) return;
+
+        const newRating = parseInt(newRatingStr);
+        if (Number.isNaN(newRating) || newRating < 1 || newRating > 5) {
+          alert('Please enter a valid rating between 1 and 5');
+          return;
+        }
+
+        this.editReview(reviewIndex, newText, newRating);
+        currentIndex = 0;
+        this.updateInfoWindowContent();
+        if (this.infoWindow) this.infoWindow.setContent(this.infoWindowContent);
+      }
+    });
+
+    popupEl.addEventListener('submit', (event) => {
+      const form = event.target;
+      if (!form || !form.classList || !form.classList.contains('submit-review')) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const el = this.infoWindow && this.infoWindow.getElement ? this.infoWindow.getElement() : null;
+      if (!el) return;
+
+      const reviewTextEl = el.querySelector('#review-text');
+      const reviewText = reviewTextEl ? reviewTextEl.value.trim() : '';
+      const ratingEl = el.querySelector('#selected-rating');
+      const rating = parseInt(ratingEl ? ratingEl.value : '0');
+
+      if (!reviewText) {
+        if (reviewTextEl && typeof reviewTextEl.reportValidity === 'function') reviewTextEl.reportValidity();
+        else alert('Please provide a review.');
+        return;
+      }
+
+      if (!rating) {
+        alert('Please select a rating.');
+        return;
+      }
+
+      this.ensureReviewsLoaded();
+      this.reviews.push({ text: reviewText, rating });
+      localStorage.setItem(`reviews_${this.name}`, JSON.stringify(this.reviews));
+
+      currentIndex = 0;
+      this.updateInfoWindowContent();
+      if (this.infoWindow) this.infoWindow.setContent(this.infoWindowContent);
+    });
+  }
+
   plot() { // Handle event listeners and info window content
     this.marker = L.marker([this.x_coord, this.y_coord], { icon: options[this.img_icon] }).addTo(map);
 
-    this.marker.on('click', () => { // On click, handle popup and cookie rating events
-      this.updateInfoWindowContent();
-      this.infoWindow = L.popup({ maxWidth: 500 })
-        .setLatLng([this.x_coord, this.y_coord])
-        .setContent(this.infoWindowContent)
-        .openOn(map);
-
-      // Attach delegated listeners once per popup instance (avoid re-binding after every edit/delete)
-      const attachDelegatedHandlers = () => {
-        const popupEl = this.infoWindow && this.infoWindow.getElement && this.infoWindow.getElement();
-        if (!popupEl || popupEl.dataset.handlersAttached === "true") return;
-        popupEl.dataset.handlersAttached = "true";
-
-        let currentIndex = 0;
-
-        const getImages = () => {
-          const el = this.infoWindow && this.infoWindow.getElement ? this.infoWindow.getElement() : null;
-          return el ? el.querySelectorAll('.info-window-image img') : [];
-        };
-
-        const showImage = (index) => {
-          const images = getImages();
-          images.forEach((img, i) => {
-            img.classList.toggle('active', i === index);
-          });
-        };
-
-        popupEl.addEventListener('click', (ev) => {
-          const target = ev.target;
-          if (!target) return;
-
-          const prevBtn = target.closest('.prev');
-          if (prevBtn) {
-            ev.stopPropagation();
-            const images = getImages();
-            const len = images.length;
-            if (!len) return;
-            currentIndex = currentIndex > 0 ? currentIndex - 1 : len - 1;
-            showImage(currentIndex);
-            return;
-          }
-
-          const nextBtn = target.closest('.next');
-          if (nextBtn) {
-            ev.stopPropagation();
-            const images = getImages();
-            const len = images.length;
-            if (!len) return;
-            currentIndex = currentIndex < len - 1 ? currentIndex + 1 : 0;
-            showImage(currentIndex);
-            return;
-          }
-
-          const ratingStar = target.closest('.rating span[rating-star]');
-          if (ratingStar) {
-            ev.stopPropagation();
-            const selectedRating = parseInt(ratingStar.getAttribute('rating-star'));
-            if (Number.isNaN(selectedRating)) return;
-
-            const el = this.infoWindow && this.infoWindow.getElement ? this.infoWindow.getElement() : null;
-            if (!el) return;
-
-            const ratingStars = el.querySelectorAll('.rating span[rating-star]');
-            ratingStars.forEach(s => {
-              const starRating = parseInt(s.getAttribute('rating-star'));
-              if (starRating <= selectedRating) s.classList.add('selected');
-              else s.classList.remove('selected');
-            });
-
-            const selEl = el.querySelector('#selected-rating');
-            if (selEl) selEl.value = selectedRating;
-
-            const reviewTextEl = el.querySelector('#review-text');
-            if (reviewTextEl && typeof reviewTextEl.setCustomValidity === 'function') {
-              reviewTextEl.setCustomValidity('');
-            }
-            return;
-          }
-
-          const deleteBtn = target.closest('.review-delete-btn');
-          if (deleteBtn) {
-            ev.stopPropagation();
-            const reviewIndex = parseInt(deleteBtn.getAttribute('data-review-index'));
-            this.deleteReview(reviewIndex);
-            currentIndex = 0;
-            this.updateInfoWindowContent();
-            if (this.infoWindow) this.infoWindow.setContent(this.infoWindowContent);
-            return;
-          }
-
-          const editBtn = target.closest('.review-edit-btn');
-          if (editBtn) {
-            ev.stopPropagation();
-            const reviewIndex = parseInt(editBtn.getAttribute('data-review-index'));
-            const review = this.reviews[reviewIndex];
-            if (!review) return;
-
-            const newText = prompt('Edit your review:', review.text);
-            if (newText === null) return;
-            if (!newText.trim()) {
-              alert('Review text cannot be empty');
-              return;
-            }
-
-            const newRatingStr = prompt('Edit your rating (1-5):', review.rating.toString());
-            if (newRatingStr === null) return;
-
-            const newRating = parseInt(newRatingStr);
-            if (Number.isNaN(newRating) || newRating < 1 || newRating > 5) {
-              alert('Please enter a valid rating between 1 and 5');
-              return;
-            }
-
-            this.editReview(reviewIndex, newText, newRating);
-            currentIndex = 0;
-            this.updateInfoWindowContent();
-            if (this.infoWindow) this.infoWindow.setContent(this.infoWindowContent);
-          }
-        });
-
-        popupEl.addEventListener('submit', (event) => {
-          const form = event.target;
-          if (!form || !form.classList || !form.classList.contains('submit-review')) return;
-
-          event.preventDefault();
-          event.stopPropagation();
-
-          const el = this.infoWindow && this.infoWindow.getElement ? this.infoWindow.getElement() : null;
-          if (!el) return;
-
-          const reviewTextEl = el.querySelector('#review-text');
-          const reviewText = reviewTextEl ? reviewTextEl.value.trim() : '';
-          const ratingEl = el.querySelector('#selected-rating');
-          const rating = parseInt(ratingEl ? ratingEl.value : '0');
-
-          if (!reviewText) {
-            if (reviewTextEl && typeof reviewTextEl.reportValidity === 'function') reviewTextEl.reportValidity();
-            else alert('Please provide a review.');
-            return;
-          }
-
-          if (!rating) {
-            alert('Please select a rating.');
-            return;
-          }
-
-          this.reviews.push({ text: reviewText, rating });
-          localStorage.setItem(`reviews_${this.name}`, JSON.stringify(this.reviews));
-
-          currentIndex = 0;
-          this.updateInfoWindowContent();
-          if (this.infoWindow) this.infoWindow.setContent(this.infoWindowContent);
-        });
-      };
-
-      // Wait a tick so Leaflet has created the popup DOM element
-      setTimeout(attachDelegatedHandlers, 0);
-    });
+    this.marker.on('click', () => this.openInfoWindowOnMap());
   }
 } // End icon object declaration
 
@@ -535,13 +555,16 @@ function closeHelp() {
   document.getElementById("help-popup").style.display = "none";
 }
 
-// Close the help popup if the user clicks outside of the help content
-window.onclick = function(event) {
-  const popup = document.getElementById("help-popup");
-  if (event.target === popup) {
-    popup.style.display = "none";
+window.addEventListener("click", function (event) {
+  const helpPopup = document.getElementById("help-popup");
+  if (helpPopup && event.target === helpPopup) {
+    helpPopup.style.display = "none";
   }
-}
+  const mapKeyPopup = document.getElementById("map-key-popup");
+  if (mapKeyPopup && event.target === mapKeyPopup) {
+    mapKeyPopup.style.display = "none";
+  }
+});
 
 function openMapKey(){
   closeAllPopups('Report');
@@ -554,15 +577,8 @@ function closeMapKey(){
 
 function showInfoHelper(id){
   const icon = buildings[id];
-  console.log("External function called for:", icon);
-  console.log('Toggling icon:', icon);
-  console.log('Coordinates:', icon.x_coord, icon.y_coord);
-
-    icon.infoWindow = L.popup({ maxWidth: 500 })
-      .setLatLng([icon.x_coord, icon.y_coord])
-      .setContent(icon.infoWindowContent)
-      .openOn(map);  
-
+  if (!icon || typeof map === "undefined") return;
+  icon.openInfoWindowOnMap();
   closeSearch();
 }
 
@@ -596,13 +612,6 @@ document.addEventListener('DOMContentLoaded', function() {
         searchButton.addEventListener("click", openSearch);
     }
 });
-
-window.onclick = function(event) {
-  const popup = document.getElementById("mapKeyPopup");
-  if (event.target === popup) {
-    popup.style.display = "none";
-  }
-}
 
 function openPopup(id) {
   closeAllPopups(id);
