@@ -12,6 +12,18 @@ const getData = require("../scripts/processData.js");
 const startServer = async () => {
   try {
     await dbFunctions.initializeDatabase();
+
+    // Flush any pending debounced DB saves on shutdown
+    const shutdown = async (signal) => {
+      try {
+        dbFunctions.flushSaveDb?.();
+        await fastify.close();
+      } finally {
+        process.exit(0);
+      }
+    };
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
     
     // Register static files
     fastify.register(require("@fastify/static"), {

@@ -22,6 +22,25 @@ const insertBuildingSchema = {
 
 const routes = (fastify, options, done) => {
   
+  // Paginated full building rows: ?limit=&offset=
+  fastify.get("/building", async (request, reply) => {
+    try {
+      const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 50, 1), 500);
+      const offset = Math.max(parseInt(request.query.offset, 10) || 0, 0);
+      const total = dbFunctions.countBuildings();
+      const items = dbFunctions.fetchBuildingsPage(limit, offset);
+      reply.send({
+        items,
+        total,
+        limit,
+        offset,
+        hasMore: offset + items.length < total,
+      });
+    } catch (err) {
+      reply.status(500).send({ error: "Failed to fetch buildings" });
+    }
+  });
+
   // Paginated building names: ?limit=&offset= (use GET /building/name/:name for full row — replaces /x_coord, /y_coord, etc.)
   fastify.get("/building/names", async (request, reply) => {
     try {

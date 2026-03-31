@@ -7,6 +7,7 @@ const dbPath = path.join(__dirname, dbFile);
 let db;
 let SQL;
 
+// --- Persistence ------------------------------------------------------------
 function saveDb() {
   try {
     const data = db.export();
@@ -14,6 +15,25 @@ function saveDb() {
   } catch (err) {
     console.error("Error saving database", err.message);
   }
+}
+
+let saveTimer = null;
+let savePending = false;
+const SAVE_DEBOUNCE_MS = 1000;
+
+function requestSaveDb() {
+  savePending = true;
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    flushSaveDb();
+  }, SAVE_DEBOUNCE_MS);
+}
+
+function flushSaveDb() {
+  if (!savePending) return;
+  savePending = false;
+  saveDb();
 }
 
 function execGet(db, sql, params = []) {
@@ -31,6 +51,30 @@ function execAll(db, sql, params = []) {
   while (stmt.step()) rows.push(stmt.getAsObject());
   stmt.free();
   return rows;
+}
+
+// --- Prepared statements (hot writes) --------------------------------------
+let stmtInsertBuilding = null;
+let stmtInsertReview = null;
+let stmtInsertReport = null;
+
+function prepareStatements() {
+  // Prepare after tables exist.
+  try {
+    stmtInsertBuilding?.free?.();
+    stmtInsertReview?.free?.();
+    stmtInsertReport?.free?.();
+  } catch {}
+
+  stmtInsertBuilding = db.prepare(
+    "INSERT INTO building (name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  );
+  stmtInsertReview = db.prepare(
+    "INSERT INTO review (comment, building_id, product_rating) VALUES (?, ?, ?)"
+  );
+  stmtInsertReport = db.prepare(
+    "INSERT INTO report (building_id, title, description) VALUES (?, ?, ?)"
+  );
 }
 
 function buildBuildingTable() {
@@ -142,7 +186,7 @@ async function initializeDatabase() {
     console.log("Building does not yet exist-- creating now :P");
     buildBuildingTable();
     await populateWithStarterData();
-    saveDb();
+    requestSaveDb();
   } else {
     console.log("Building table already exists :P");
   }
@@ -165,7 +209,8 @@ async function initializeDatabase() {
   }
 
   createIndexes();
-  saveDb();
+  prepareStatements();
+  flushSaveDb();
 }
 
 const populateWithStarterData = async () => {
@@ -210,18 +255,47 @@ function fetchSpecificBuildingByKey(key) {
   return execGet(db, "SELECT * FROM building WHERE id = ?", [key]);
 }
 
+// --- Count(*) caching -------------------------------------------------------
+const COUNT_TTL_MS = 2000;
+const countCache = {
+  buildings: { value: null, at: 0 },
+  reviews: { value: null, at: 0 },
+};
+
+function invalidateCounts(...keys) {
+  for (const k of keys) {
+    if (countCache[k]) {
+      countCache[k].value = null;
+      countCache[k].at = 0;
+    }
+  }
+}
+
+function cachedCount(key, sql) {
+  const now = Date.now();
+  const entry = countCache[key];
+  if (entry.value != null && now - entry.at < COUNT_TTL_MS) return entry.value;
+  const row = execGet(db, sql);
+  const v = row ? Number(row.c) : 0;
+  entry.value = v;
+  entry.at = now;
+  return v;
+}
+
 function countBuildings() {
-  const row = execGet(db, "SELECT COUNT(*) AS c FROM building");
-  return row ? Number(row.c) : 0;
+  return cachedCount("buildings", "SELECT COUNT(*) AS c FROM building");
 }
 
 function fetchBuildingNamesPage(limit, offset) {
   return execAll(db, "SELECT name FROM building ORDER BY name ASC LIMIT ? OFFSET ?", [limit, offset]);
 }
 
+function fetchBuildingsPage(limit, offset) {
+  return execAll(db, "SELECT * FROM building ORDER BY id ASC LIMIT ? OFFSET ?", [limit, offset]);
+}
+
 function countReviews() {
-  const row = execGet(db, "SELECT COUNT(*) AS c FROM review");
-  return row ? Number(row.c) : 0;
+  return cachedCount("reviews", "SELECT COUNT(*) AS c FROM review");
 }
 
 function fetchReviewsPage(limit, offset) {
@@ -235,17 +309,18 @@ module.exports = {
   fetchSpecificBuildingByKey,
   countBuildings,
   fetchBuildingNamesPage,
+  fetchBuildingsPage,
   countReviews,
   fetchReviewsPage,
+  flushSaveDb,
 
   addReport: async (building_id, title, description) => {
     try {
-      db.run("INSERT INTO report (building_id, title, description) VALUES (?, ?, ?)", [
-        building_id,
-        title,
-        description,
-      ]);
-      saveDb();
+      stmtInsertReport.bind([building_id, title, description]);
+      stmtInsertReport.step();
+      stmtInsertReport.reset();
+      invalidateCounts(); // report count not cached yet, but safe
+      requestSaveDb();
     } catch (dbError) {
       console.error(dbError);
     }
@@ -264,22 +339,22 @@ module.exports = {
     needs_service
   ) => {
     try {
-      db.run(
-        "INSERT INTO building (name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-          name,
-          x_coord,
-          y_coord,
-          time_opens,
-          time_closes,
-          num_snack_machines,
-          num_drink_machines,
-          num_ratings,
-          average_ratings,
-          needs_service,
-        ]
-      );
-      saveDb();
+      stmtInsertBuilding.bind([
+        name,
+        x_coord,
+        y_coord,
+        time_opens,
+        time_closes,
+        num_snack_machines,
+        num_drink_machines,
+        num_ratings,
+        average_ratings,
+        needs_service,
+      ]);
+      stmtInsertBuilding.step();
+      stmtInsertBuilding.reset();
+      invalidateCounts("buildings");
+      requestSaveDb();
     } catch (dbError) {
       console.error(dbError);
     }
@@ -288,11 +363,9 @@ module.exports = {
   insertReview: async (comment, building_id, product_rating) => {
     try {
       db.run("BEGIN TRANSACTION");
-      db.run("INSERT INTO review (comment, building_id, product_rating) VALUES (?, ?, ?)", [
-        comment,
-        building_id,
-        product_rating,
-      ]);
+      stmtInsertReview.bind([comment, building_id, product_rating]);
+      stmtInsertReview.step();
+      stmtInsertReview.reset();
       db.run(
         `UPDATE building
          SET num_ratings = (SELECT COUNT(*) FROM review WHERE review.building_id = building.id),
@@ -301,7 +374,8 @@ module.exports = {
         [building_id]
       );
       db.run("COMMIT");
-      saveDb();
+      invalidateCounts("reviews");
+      requestSaveDb();
     } catch (dbError) {
       db.run("ROLLBACK");
       console.error(dbError);
