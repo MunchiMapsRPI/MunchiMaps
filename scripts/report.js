@@ -23,13 +23,13 @@ const routes = (fastify, options, done) => {
       
       const building = dbFunctions.fetchSpecificBuildingByKey(building_id);
       if (!building) {
-        return reply.status(404).send({error: `Building with id '${building_id}' not found.`});
+        return reply.status(404).send({ success: false, error: { message: `Building with id '${building_id}' not found.` } });
       }
       
       await dbFunctions.addReport(building_id, title, description);
-      reply.status(201).send({success: true});
+      reply.status(201).send({ success: true, data: { created: true } });
     } catch (err) {
-      reply.status(500).send({error: "Failed to insert new report object."});
+      reply.status(500).send({ success: false, error: { message: "Failed to insert new report object." } });
     }
   });
 

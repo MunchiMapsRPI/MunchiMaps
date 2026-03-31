@@ -23,14 +23,12 @@ const routes = (fastify, options, done) => {
       const total = dbFunctions.countReviews();
       const items = dbFunctions.fetchReviewsPage(limit, offset);
       reply.send({
-        items,
-        total,
-        limit,
-        offset,
-        hasMore: offset + items.length < total,
+        success: true,
+        data: { items },
+        meta: { total, limit, offset, hasMore: offset + items.length < total },
       });
     } catch (err) {
-      reply.status(500).send({ error: "Failed to fetch reviews" });
+      reply.status(500).send({ success: false, error: { message: "Failed to fetch reviews" } });
     }
   });
   
@@ -41,13 +39,13 @@ const routes = (fastify, options, done) => {
       
       const building = dbFunctions.fetchSpecificBuildingByKey(building_id);
       if (!building) {
-        return reply.status(404).send({error: `Building with id '${building_id}' not found.`});
+        return reply.status(404).send({ success: false, error: { message: `Building with id '${building_id}' not found.` } });
       }
       
       await dbFunctions.insertReview(comment, building_id, product_rating);
-      reply.status(201).send({success: true});
+      reply.status(201).send({ success: true, data: { created: true } });
     } catch (err) {
-      reply.status(500).send({error: "Failed to insert new review object."});
+      reply.status(500).send({ success: false, error: { message: "Failed to insert new review object." } });
     }
   });
   

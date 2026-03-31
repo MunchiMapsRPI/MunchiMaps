@@ -13,6 +13,25 @@ const startServer = async () => {
   try {
     await dbFunctions.initializeDatabase();
 
+    // Central error formatting (validation + internal errors)
+    fastify.setErrorHandler((err, request, reply) => {
+      const statusCode = err.statusCode || (err.validation ? 400 : 500);
+      const payload = {
+        success: false,
+        error: {
+          message: statusCode >= 500 ? "Internal Server Error" : (err.message || "Bad Request"),
+          statusCode,
+        },
+      };
+      if (err.validation) {
+        payload.error.validation = err.validation;
+      }
+      if (statusCode >= 500) {
+        request.log.error(err);
+      }
+      reply.code(statusCode).send(payload);
+    });
+
     // Flush any pending debounced DB saves on shutdown
     const shutdown = async (signal) => {
       try {
@@ -44,9 +63,10 @@ const startServer = async () => {
     });
 
     // Register route modules
-    fastify.register(require('../scripts/buildings.js'));
-    fastify.register(require('../scripts/reviews.js'));
-    fastify.register(require('../scripts/report.js'));
+    const apiPrefix = "/api/v1";
+    fastify.register(require('../scripts/buildings.js'), { prefix: apiPrefix });
+    fastify.register(require('../scripts/reviews.js'), { prefix: apiPrefix });
+    fastify.register(require('../scripts/report.js'), { prefix: apiPrefix });
 
     // Start the server
     const address = await fastify.listen({ port: 5000 });

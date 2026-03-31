@@ -8,6 +8,8 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
+const API_BASE = "http://localhost:5000/api/v1";
+
 let buildingNames = [];
 let coordsMap = new Map();
 let typeMap = new Map();
@@ -20,10 +22,12 @@ const fetchAllBuildingNames = async () => {
     let total = Infinity;
 
     while (offset < total) {
-      const response = await axios.get("http://localhost:5000/building/names", {
+      const response = await axios.get(`${API_BASE}/building/names`, {
         params: { limit: pageSize, offset },
       });
-      const { items, total: t } = response.data;
+      const { data, meta } = response.data || {};
+      const items = data && data.items;
+      const t = meta && meta.total;
       total = typeof t === "number" ? t : 0;
 
       if (!Array.isArray(items)) {
@@ -51,8 +55,8 @@ const fetchAllBuildingNames = async () => {
 const fetchBuildingByName = async (name) => {
   try {
     const encoded = encodeURIComponent(name);
-    const response = await axios.get(`http://localhost:5000/building/name/${encoded}`);
-    return response.data;
+    const response = await axios.get(`${API_BASE}/building/name/${encoded}`);
+    return response.data && response.data.data;
   } catch (error) {
     console.error(`Error fetching building "${name}":`, error);
     return null;
