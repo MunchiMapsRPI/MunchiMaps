@@ -205,6 +205,52 @@ margin-right: 10px;
   transition: all 0.3s ease; /* Smooth animation */
 }
   
+/* Theme toggle button (left of Map Key) */
+.theme-toggle-button {
+  position: absolute;
+  top: 5px;
+  right: 125px;
+  z-index: 1000;
+  background-color: rgba(255, 255, 255, 0.0);
+  border: none;
+  border-radius: 50px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+@media screen and (max-width: 600px) {
+  .theme-toggle-button {
+    right: 90px;
+  }
+}
+
+@media screen and (min-width: 601px) and (max-width: 1024px) {
+  .theme-toggle-button {
+    right: 145px;
+  }
+}
+
+.theme-toggle-button:hover {
+  transform: scale(1.1);
+}
+
+.theme-toggle-button:active {
+  transform: translateY(2px);
+}
+  
+.theme-toggle-button-img {
+  height: 30px;
+  width: auto;
+  background-color: #000000d1;
+  border-radius: 50px;
+}
+
+@media screen and (min-width: 601px) and (max-width: 1024px) {
+  .theme-toggle-button-img {
+    height: 44px;
+  }
+}
+
 /* Small screens (e.g., mobile) */
 @media screen and (max-width: 600px) {
   .map-key-button {

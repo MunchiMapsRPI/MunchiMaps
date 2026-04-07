@@ -534,6 +534,8 @@ if (mapKeyButton) {
       }, 200);
     }
   }
+  // Expose for UI button (defined outside initMap scope)
+  window.toggleDarkMode = toggleDarkMode;
 
   // Toggles dark mode when user presses 'd' or 'D.'
   document.addEventListener('keydown', function(event) {
@@ -610,6 +612,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchButton = document.querySelector(".button[onclick='openSearch()']");
     if (searchButton) {
         searchButton.addEventListener("click", openSearch);
+    }
+
+    const themeToggleBtn = document.getElementById("ThemeToggle");
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener("click", () => {
+        if (typeof window.toggleDarkMode === "function") {
+          window.toggleDarkMode();
+        }
+      });
     }
 });
 
