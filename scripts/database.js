@@ -67,7 +67,7 @@ function prepareStatements() {
   } catch {}
 
   stmtInsertBuilding = db.prepare(
-    "INSERT INTO building (name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO building (name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, sum_ratings, average_ratings, needs_service) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
   );
   stmtInsertReview = db.prepare(
     "INSERT INTO review (comment, building_id, product_rating) VALUES (?, ?, ?)"
@@ -88,13 +88,40 @@ function buildBuildingTable() {
       time_closes TEXT NOT NULL,
       num_snack_machines INTEGER,
       num_drink_machines INTEGER,
-      num_ratings INTEGER,
-      average_ratings REAL,
+      num_ratings INTEGER DEFAULT 0,
+      sum_ratings REAL DEFAULT 0,
+      average_ratings REAL DEFAULT 0,
       needs_service BOOLEAN
     )`);
     console.log("Building table created successfully :D");
   } catch (err) {
     console.error("Error creating table >:(", err.message);
+  }
+}
+
+function ensureBuildingSchema() {
+  try {
+    const cols = execAll(db, "PRAGMA table_info(building)");
+    const hasSum = cols.some((c) => c.name === "sum_ratings");
+    if (!hasSum) {
+      console.log("Adding sum_ratings column to building table.");
+      db.run("ALTER TABLE building ADD COLUMN sum_ratings REAL DEFAULT 0");
+
+      // One-time backfill from existing reviews
+      db.run(
+        `UPDATE building
+         SET num_ratings = (SELECT COUNT(*) FROM review WHERE review.building_id = building.id),
+             sum_ratings = (SELECT COALESCE(SUM(product_rating), 0) FROM review WHERE review.building_id = building.id),
+             average_ratings = CASE
+               WHEN (SELECT COUNT(*) FROM review WHERE review.building_id = building.id) > 0
+                 THEN (SELECT COALESCE(SUM(product_rating), 0) FROM review WHERE review.building_id = building.id) * 1.0
+                      / (SELECT COUNT(*) FROM review WHERE review.building_id = building.id)
+               ELSE 0
+             END`
+      );
+    }
+  } catch (err) {
+    console.error("Error ensuring building schema", err.message);
   }
 }
 
@@ -208,6 +235,7 @@ async function initializeDatabase() {
     console.log("Report table already exists :P");
   }
 
+  ensureBuildingSchema();
   createIndexes();
   prepareStatements();
   flushSaveDb();
@@ -219,11 +247,14 @@ const populateWithStarterData = async () => {
     const jsonData = JSON.parse(data);
 
     const sql =
-      "INSERT INTO building (name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+      "INSERT INTO building (name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, sum_ratings, average_ratings, needs_service) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     db.run("BEGIN TRANSACTION");
     const stmt = db.prepare(sql);
     for (const item of jsonData) {
+      const numRatings = Number(item.num_ratings || 0);
+      const avgRatings = Number(item.average_ratings || 0);
+      const sumRatings = numRatings * avgRatings;
       stmt.bind([
         item.name,
         item.x_coord,
@@ -232,8 +263,9 @@ const populateWithStarterData = async () => {
         item.time_closes,
         item.num_snack_machines,
         item.num_drink_machines,
-        item.num_ratings,
-        item.average_ratings,
+        numRatings,
+        sumRatings,
+        avgRatings,
         item.needs_service,
       ]);
       stmt.step();
@@ -339,6 +371,9 @@ module.exports = {
     needs_service
   ) => {
     try {
+      const numRatings = Number(num_ratings || 0);
+      const avgRatings = Number(average_ratings || 0);
+      const sumRatings = numRatings * avgRatings;
       stmtInsertBuilding.bind([
         name,
         x_coord,
@@ -347,8 +382,9 @@ module.exports = {
         time_closes,
         num_snack_machines,
         num_drink_machines,
-        num_ratings,
-        average_ratings,
+        numRatings,
+        sumRatings,
+        avgRatings,
         needs_service,
       ]);
       stmtInsertBuilding.step();
@@ -368,10 +404,11 @@ module.exports = {
       stmtInsertReview.reset();
       db.run(
         `UPDATE building
-         SET num_ratings = (SELECT COUNT(*) FROM review WHERE review.building_id = building.id),
-             average_ratings = (SELECT COALESCE(AVG(product_rating), 0) FROM review WHERE review.building_id = building.id)
+         SET num_ratings = COALESCE(num_ratings, 0) + 1,
+             sum_ratings = COALESCE(sum_ratings, 0) + ?,
+             average_ratings = (COALESCE(sum_ratings, 0) + ?) * 1.0 / (COALESCE(num_ratings, 0) + 1)
          WHERE id = ?`,
-        [building_id]
+        [product_rating, product_rating, building_id]
       );
       db.run("COMMIT");
       invalidateCounts("reviews");
