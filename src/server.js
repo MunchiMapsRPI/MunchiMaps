@@ -2,7 +2,9 @@ console.log("[src] server.js running...");
 
 const fastify = require("fastify")({
   logger: true,
-  bodyLimit: 64 * 1024 // 64KB - limits impact of large payloads
+  bodyLimit: 32 * 1024, // 32KB - stricter default payload limit
+  maxParamLength: 200, // reduce abuse via huge path params
+  requestTimeout: 15_000 // avoid hanging connections
 });
 
 const path = require('path');
@@ -64,6 +66,19 @@ const startServer = async () => {
     
     // Response compression (gzip/brotli where supported)
     fastify.register(require("@fastify/compress"));
+
+    // CORS: default deny; allowlist via env
+    // Set CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173" (comma-separated) when developing with a separate frontend dev server.
+    const origins = String(process.env.CORS_ORIGINS || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    fastify.register(require("@fastify/cors"), {
+      origin: origins.length === 0 ? false : origins,
+      methods: ["GET", "POST", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      maxAge: 86400,
+    });
 
     // Register static files
     fastify.register(require("@fastify/static"), {
