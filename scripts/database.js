@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const initSqlJs = require("sql.js");
+const { performance } = require("perf_hooks");
 
 const dbFile = "munchiData.db";
 const dbPath = path.join(__dirname, dbFile);
@@ -37,19 +38,29 @@ function flushSaveDb() {
 }
 
 function execGet(db, sql, params = []) {
+  const t0 = performance.now();
   const stmt = db.prepare(sql);
   stmt.bind(params);
   const row = stmt.step() ? stmt.getAsObject() : null;
   stmt.free();
+  const dt = performance.now() - t0;
+  if (dt > (Number(process.env.SLOW_DB_QUERY_MS) || 25)) {
+    console.warn(`[db] slow execGet (${dt.toFixed(1)}ms)`, { sql });
+  }
   return row;
 }
 
 function execAll(db, sql, params = []) {
+  const t0 = performance.now();
   const stmt = db.prepare(sql);
   stmt.bind(params);
   const rows = [];
   while (stmt.step()) rows.push(stmt.getAsObject());
   stmt.free();
+  const dt = performance.now() - t0;
+  if (dt > (Number(process.env.SLOW_DB_QUERY_MS) || 25)) {
+    console.warn(`[db] slow execAll (${dt.toFixed(1)}ms)`, { sql, rowCount: rows.length });
+  }
   return rows;
 }
 

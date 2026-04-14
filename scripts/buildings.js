@@ -1,5 +1,9 @@
 const dbFunctions = require("./database.js");
 const { sanitizeBody } = require("./sanitize.js");
+const { createTtlCache } = require("../src/utils/ttlCache.js");
+
+const namesCache = createTtlCache({ ttlMs: Number(process.env.BUILDING_NAMES_CACHE_TTL_MS) || 10_000, maxEntries: 50 });
+const buildingsPageCache = createTtlCache({ ttlMs: Number(process.env.BUILDINGS_PAGE_CACHE_TTL_MS) || 5_000, maxEntries: 200 });
 
 const insertBuildingSchema = {
   body: {
@@ -27,12 +31,20 @@ const routes = (fastify, options, done) => {
     try {
       const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 50, 1), 500);
       const offset = Math.max(parseInt(request.query.offset, 10) || 0, 0);
+      const cacheKey = `${limit}:${offset}`;
+      const cached = buildingsPageCache.get(cacheKey);
+      if (cached) return reply.send(cached);
+
       const total = dbFunctions.countBuildings();
       const items = dbFunctions.fetchBuildingsPage(limit, offset);
-      reply.send({
+      const payload = {
         success: true,
         data: { items },
         meta: { total, limit, offset, hasMore: offset + items.length < total },
+      };
+      buildingsPageCache.set(cacheKey, payload);
+      reply.send({
+        ...payload,
       });
     } catch (err) {
       reply.status(500).send({ success: false, error: { message: "Failed to fetch buildings" } });
@@ -44,12 +56,20 @@ const routes = (fastify, options, done) => {
     try {
       const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 100, 1), 500);
       const offset = Math.max(parseInt(request.query.offset, 10) || 0, 0);
+      const cacheKey = `${limit}:${offset}`;
+      const cached = namesCache.get(cacheKey);
+      if (cached) return reply.send(cached);
+
       const total = dbFunctions.countBuildings();
       const items = dbFunctions.fetchBuildingNamesPage(limit, offset);
-      reply.send({
+      const payload = {
         success: true,
         data: { items },
         meta: { total, limit, offset, hasMore: offset + items.length < total },
+      };
+      namesCache.set(cacheKey, payload);
+      reply.send({
+        ...payload,
       });
     } catch (err) {
       reply.status(500).send({ success: false, error: { message: "Failed to fetch buildings" } });
@@ -90,6 +110,8 @@ const routes = (fastify, options, done) => {
       const body = sanitizeBody(request.body, ["name", "time_opens", "time_closes"]);
       const {name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service} = body;
       await dbFunctions.insertBuilding(name, x_coord, y_coord, time_opens, time_closes, num_snack_machines, num_drink_machines, num_ratings, average_ratings, needs_service);
+      namesCache.clear();
+      buildingsPageCache.clear();
       reply.status(201).send({ success: true, data: { created: true } });
     } catch (err) {
       reply.status(500).send({ success: false, error: { message: "Failed to insert new building object." } });

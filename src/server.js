@@ -32,6 +32,24 @@ const startServer = async () => {
       reply.code(statusCode).send(payload);
     });
 
+    // Request timing + slow request logging
+    const SLOW_REQUEST_MS = Number(process.env.SLOW_REQUEST_MS) || 250;
+    fastify.addHook("onRequest", (request, _reply, done) => {
+      request.startTime = Date.now();
+      done();
+    });
+    fastify.addHook("onResponse", (request, reply, done) => {
+      const start = request.startTime || Date.now();
+      const ms = Date.now() - start;
+      if (ms >= SLOW_REQUEST_MS) {
+        request.log.warn(
+          { req: { method: request.method, url: request.url }, res: { statusCode: reply.statusCode }, responseTimeMs: ms },
+          "slow request"
+        );
+      }
+      done();
+    });
+
     // Flush any pending debounced DB saves on shutdown
     const shutdown = async (signal) => {
       try {
@@ -44,6 +62,9 @@ const startServer = async () => {
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
     
+    // Response compression (gzip/brotli where supported)
+    fastify.register(require("@fastify/compress"));
+
     // Register static files
     fastify.register(require("@fastify/static"), {
       root: path.join(__dirname, '../Website'),
@@ -72,8 +93,12 @@ const startServer = async () => {
     const address = await fastify.listen({ port: 5000 });
     console.log(`Server started at ${address}`);
 
-    // Run data processing
-    await getData.runDataProcessing();
+    // Run data processing without blocking request handling
+    setImmediate(() => {
+      getData.runDataProcessing().catch((err) => {
+        fastify.log.error({ err }, "data processing failed");
+      });
+    });
 
   } catch (err) {
     console.error(err);

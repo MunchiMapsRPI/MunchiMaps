@@ -51,36 +51,50 @@ const fetchAllBuildingNames = async () => {
   }
 };
 
-/** Full building row by name (one round trip: coords + machine counts + id). */
-const fetchBuildingByName = async (name) => {
-  try {
-    const encoded = encodeURIComponent(name);
-    const response = await axios.get(`${API_BASE}/building/name/${encoded}`);
-    return response.data && response.data.data;
-  } catch (error) {
-    console.error(`Error fetching building "${name}":`, error);
-    return null;
+/** Fetch all buildings in pages (avoids N+1 calls to /building/name/:name). */
+const fetchAllBuildings = async () => {
+  const buildings = [];
+  const pageSize = 200;
+  let offset = 0;
+  let total = Infinity;
+
+  while (offset < total) {
+    const response = await axios.get(`${API_BASE}/building`, {
+      params: { limit: pageSize, offset },
+    });
+    const { data, meta } = response.data || {};
+    const items = data && data.items;
+    const t = meta && meta.total;
+    total = typeof t === "number" ? t : 0;
+
+    if (!Array.isArray(items)) {
+      console.error("Expected items array in paginated response:", response.data);
+      return [];
+    }
+
+    buildings.push(...items);
+    offset += items.length;
+    if (items.length === 0) break;
   }
+
+  return buildings;
 };
 
 // Function to build a map with key building name and values x and y coords
-// One GET /building/name/:name per building fills both coord and type maps
+// Uses batched pagination from GET /building
 const buildCoordAndTypeMaps = async () => {
   if (buildingNames.length === 0) {
     console.log("Building names list is empty.");
     return;
   }
-  for (const name of buildingNames) {
-    console.log("Current Building:", name);
-    const building = await fetchBuildingByName(name);
-    if (!building) continue;
+  const all = await fetchAllBuildings();
+  const byName = new Map(all.map((b) => [b && b.name, b]));
 
-    if (building.x_coord != null && building.y_coord != null) {
-      coordsMap.set(name, [building.x_coord, building.y_coord]);
-    }
-    const has_drink_machine = Number(building.num_drink_machines) > 0;
-    const has_snack_machine = Number(building.num_snack_machines) > 0;
-    typeMap.set(name, [has_drink_machine, has_snack_machine]);
+  for (const name of buildingNames) {
+    const building = byName.get(name);
+    if (!building) continue;
+    if (building.x_coord != null && building.y_coord != null) coordsMap.set(name, [building.x_coord, building.y_coord]);
+    typeMap.set(name, [Number(building.num_drink_machines) > 0, Number(building.num_snack_machines) > 0]);
   }
   console.log("Coords map:", coordsMap);
   console.log("Type Map:", typeMap);
