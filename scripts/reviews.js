@@ -1,6 +1,16 @@
 const dbFunctions = require("./database.js");
 const { sanitizeBody } = require("./sanitize.js");
 
+const pagingQuerySchema = {
+  querystring: {
+    type: "object",
+    properties: {
+      limit: { type: "integer", minimum: 1, maximum: 500, default: 50 },
+      offset: { type: "integer", minimum: 0, default: 0 },
+    },
+  },
+};
+
 const insertReviewSchema = {
   body: {
     type: 'object',
@@ -16,10 +26,10 @@ const insertReviewSchema = {
 const routes = (fastify, options, done) => {
   
   // Paginated reviews: ?limit=&offset=
-  fastify.get("/review", async (request, reply) => {
+  fastify.get("/review", { schema: pagingQuerySchema }, async (request, reply) => {
     try {
-      const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 50, 1), 500);
-      const offset = Math.max(parseInt(request.query.offset, 10) || 0, 0);
+      const limit = request.query.limit ?? 50;
+      const offset = request.query.offset ?? 0;
       const total = dbFunctions.countReviews();
       const items = dbFunctions.fetchReviewsPage(limit, offset);
       reply.send({
