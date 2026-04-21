@@ -4,6 +4,13 @@ import './styles/dark.css';
 import './styles/Location_Style_Sheet.css';
 import './styles/loading_animation_stylesheet.css';
 
+import munchiLogo from './assets/munchimaps/MunchiMapsCroppedLogo.png';
+import cookieFavicon from './assets/munchimaps/CookieFavicon.png';
+import helpIcon from './assets/munchimaps/help-circle-grey.svg';
+import searchIcon from './assets/munchimaps/search-grey.svg';
+import reportIcon from './assets/munchimaps/alert-triangle-grey.svg';
+import crosshairIcon from './assets/munchimaps/crosshair-grey.svg';
+
 const SearchPopup = lazy(() => import('./components/SearchPopup.jsx'));
 const ReportPopup = lazy(() => import('./components/ReportPopup.jsx'));
 
@@ -30,7 +37,7 @@ function App() {
     <>
       <div className="logo-title">
         <img
-          src="https://github.com/mike-cautela/MunchiMaps/blob/main/Website/MunchiMaps%20Assets/MunchiMaps%20Logos/MunchiMapsCroppedLogo.png?raw=true"
+          src={munchiLogo}
           alt="MunchiMaps"
         />
       </div>
@@ -41,7 +48,7 @@ function App() {
 
       <button className="help-button" onClick={() => console.log('Open Help')}>
         <img
-          src="https://raw.githubusercontent.com/mike-cautela/MunchiMaps/main/Website/MunchiMaps%20Assets/MenuIcons/help-circle-grey.svg"
+          src={helpIcon}
           alt="Help"
           className="help-button-img"
         />
@@ -49,7 +56,7 @@ function App() {
 
       <button className="map-key-button" onClick={() => console.log('Open Map Key')}>
         <img
-          src="https://github.com/mike-cautela/MunchiMaps/blob/main/Website/MunchiMaps%20Assets/CookieFavicon.png?raw=true"
+          src={cookieFavicon}
           alt="Map Key"
           className="map-key-button-img"
         />
@@ -67,21 +74,21 @@ function App() {
       <div id="buttons-container">
         <button className="button" onClick={openSearch}>
           <img
-            src="https://raw.githubusercontent.com/mike-cautela/MunchiMaps/main/Website/MunchiMaps%20Assets/MenuIcons/search-grey.svg"
+            src={searchIcon}
             alt="Search"
             className="button-img"
           />
         </button>
         <button className="button" onClick={openReport}>
           <img
-            src="https://raw.githubusercontent.com/mike-cautela/MunchiMaps/main/Website/MunchiMaps%20Assets/MenuIcons/alert-triangle-grey.svg"
+            src={reportIcon}
             alt="Report"
             className="button-img"
           />
         </button>
         <button className="button" id="Location" onClick={() => console.log('Update Location')}>
           <img
-            src="https://raw.githubusercontent.com/mike-cautela/MunchiMaps/main/Website/MunchiMaps%20Assets/MenuIcons/crosshair-grey.svg"
+            src={crosshairIcon}
             alt="Location"
             className="button-img"
           />
