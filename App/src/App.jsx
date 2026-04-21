@@ -1,8 +1,6 @@
 import { Suspense, lazy, useCallback, useState } from 'react';
 import './styles/MunchiMaps_stylesheet.css';
 import './styles/dark.css';
-import './styles/Location_Style_Sheet.css';
-import './styles/loading_animation_stylesheet.css';
 
 import munchiLogo from './assets/munchimaps/MunchiMapsCroppedLogo.png';
 import cookieFavicon from './assets/munchimaps/CookieFavicon.png';
@@ -86,7 +84,14 @@ function App() {
             className="button-img"
           />
         </button>
-        <button className="button" id="Location" onClick={() => console.log('Update Location')}>
+        <button
+          className="button"
+          id="Location"
+          onClick={async () => {
+            await import('./styles/Location_Style_Sheet.css');
+            console.log('Update Location');
+          }}
+        >
           <img
             src={crosshairIcon}
             alt="Location"

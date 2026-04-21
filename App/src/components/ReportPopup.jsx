@@ -1,3 +1,5 @@
+import '../styles/popups.css';
+
 export default function ReportPopup({ open, onClose, onSubmit }) {
   if (!open) return null;
 

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import '../styles/popups.css';
 
 export default function SearchPopup({ open, onClose }) {
   const [searchTerm, setSearchTerm] = useState('');
